@@ -1,0 +1,113 @@
+<!DOCTYPE html>
+<html lang="th">
+<head>
+  <meta charset="UTF-8">
+  <title>Hiwcha Noise Cancel</title>
+  <link rel="stylesheet" href="style.css">
+</head>
+<body>
+  <div class="app-container">
+    <header>
+      <h1>Hiwcha Noise Cancel</h1>
+      <span id="status-badge" class="badge off">OFFLINE</span>
+    </header>
+
+    <div class="control-group">
+      <label for="mic-select">ไมโครโฟน (Input)</label>
+      <select id="mic-select" disabled>
+        <option value="">กำลังค้นหาอุปกรณ์...</option>
+      </select>
+    </div>
+
+    <div class="control-group">
+      <label for="output-select">อุปกรณ์เสียงออก (Output)</label>
+      <select id="output-select" disabled>
+        <option value="">กำลังค้นหาอุปกรณ์...</option>
+      </select>
+    </div>
+    <p id="device-status" class="hint" role="status">กำลังค้นหาอุปกรณ์เสียง...</p>
+
+    <div class="control-group">
+      <label>Voice Threshold (VAD): <span id="vad-val">50%</span></label>
+      <input type="range" id="vad-slider" min="0" max="95" value="50">
+    </div>
+
+    <button id="toggle-btn" class="btn-primary">เปิดใช้งานตัดเสียงรบกวน</button>
+  </div>
+
+  <script>
+    const { invoke } = window.__TAURI__.core;
+    let isRunning = false;
+
+    const btn = document.getElementById('toggle-btn');
+    const slider = document.getElementById('vad-slider');
+    const vadVal = document.getElementById('vad-val');
+    const micSelect = document.getElementById('mic-select');
+    const outputSelect = document.getElementById('output-select');
+    const showDevices = (select, devices, emptyLabel) => {
+      select.replaceChildren();
+      if (!devices.length) {
+        select.add(new Option(emptyLabel, ''));
+        select.disabled = true;
+        return;
+      }
+      for (const device of devices) {
+        const suffix = device.isDefault ? ' (ค่าเริ่มต้น)' : '';
+        select.add(new Option(`${device.name}${suffix}`, String(device.index)));
+      }
+      const defaultDevice = devices.find(device => device.isDefault);
+      if (defaultDevice) select.value = String(defaultDevice.index);
+      select.disabled = false;
+    };
+
+    const deviceStatus = document.getElementById('device-status');
+    Promise.race([
+      invoke('list_audio_devices'),
+      new Promise((_, reject) => setTimeout(() => reject(new Error('ค้นหาอุปกรณ์เกิน 10 วินาที')), 10000))
+    ]).then(devices => {
+      showDevices(micSelect, devices.inputs, 'ไม่พบไมโครโฟน');
+      showDevices(outputSelect, devices.outputs, 'ไม่พบอุปกรณ์เสียงออก');
+      deviceStatus.textContent = devices.inputs.length
+        ? `พบไมโครโฟน ${devices.inputs.length} อุปกรณ์`
+        : 'ไม่พบไมโครโฟนที่ใช้งานได้';
+    }).catch(error => {
+      showDevices(micSelect, [], 'โหลดรายการไม่สำเร็จ');
+      showDevices(outputSelect, [], 'โหลดรายการไม่สำเร็จ');
+      deviceStatus.textContent = `ค้นหาอุปกรณ์ไม่สำเร็จ: ${error}`;
+    });
+
+    slider.addEventListener('input', (e) => {
+      vadVal.textContent = `${e.target.value}%`;
+    });
+
+    btn.addEventListener('click', async () => {
+      const requestedState = !isRunning;
+      const micIdx = Number(micSelect.value);
+      const outIdx = Number(outputSelect.value);
+      if (!Number.isInteger(micIdx) || !Number.isInteger(outIdx)) {
+        alert('กรุณาเลือกไมโครโฟนและอุปกรณ์เสียงออก');
+        return;
+      }
+      const threshold = parseFloat(slider.value) / 100.0;
+
+      try {
+        await invoke('toggle_engine', { 
+          enable: requestedState, 
+          inputIdx: micIdx, 
+          cableIdx: outIdx, 
+          threshold 
+        });
+        isRunning = requestedState;
+        btn.textContent = isRunning ? 'Running — close app to stop' : 'เปิดใช้งานตัดเสียงรบกวน';
+        btn.classList.toggle('active', isRunning);
+        document.getElementById('status-badge').textContent = isRunning ? 'RUNNING' : 'OFFLINE';
+        document.getElementById('status-badge').classList.toggle('off', !isRunning);
+        btn.disabled = isRunning;
+      } catch (err) {
+        alert('Error: ' + err);
+        isRunning = false;
+      }
+    });
+  </script>
+</body>
+</html>

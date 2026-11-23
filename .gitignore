@@ -1,0 +1,31 @@
+# Rust / Tauri build output
+src-tauri/target/
+src-tauri/gen/
+
+# rnnoise autotools build artifacts (sources stay tracked)
+rnnoise/.libs/
+rnnoise/.deps/
+rnnoise/autom4te.cache/
+rnnoise/config.log
+rnnoise/config.status
+rnnoise/libtool
+rnnoise/stamp-h1
+rnnoise/*.la
+rnnoise/*.lo
+rnnoise/*.o
+rnnoise/*.a
+rnnoise/*.so
+rnnoise/*.exe
+rnnoise/*.pc
+rnnoise/*.tar.gz
+
+# Python
+__pycache__/
+*.pyc
+
+# Editors / OS
+.vscode/
+.idea/
+*.swp
+Thumbs.db
+desktop.ini
