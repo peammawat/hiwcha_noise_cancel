@@ -31,7 +31,7 @@
 ### 3. ดาวน์โหลดโปรเจกต์
 
 ```powershell
-git clone <URL ของ repository> hiwcha_noise_cancellation
+git clone https://github.com/peammawat/hiwcha_noise_cancel hiwcha_noise_cancellation
 cd hiwcha_noise_cancellation
 ```
 
